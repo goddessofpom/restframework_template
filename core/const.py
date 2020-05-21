@@ -1,0 +1,2 @@
+GENDER_MALE = 0  # 男
+GENDER_FEMALE = 1  # 女

@@ -1,0 +1,11 @@
+{
+  "name": "APIs",
+  "version": "1.0.0",
+  "description": "接口文档",
+  "title": "ServiceAPIs",
+  "url" : "http://localhost:8000/api/v1",
+  "header": {
+    "title": "api通用规则",
+    "filename": "apidocheader.md"
+  }
+}

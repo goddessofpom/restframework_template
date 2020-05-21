@@ -1,0 +1,42 @@
+version: '3'
+
+services:
+    xianggui-service-rls:
+        depends_on:
+          - db
+        links:
+          - db
+        restart: always
+        build: {context: ., dockerfile: ./Dockerfile}
+        networks: [mysql-net, redis-net, admin-net]
+        volumes:
+          - share-volume:/xianggui_service_share
+          - var-volume:/var/xianggui_service
+        environment:
+          - DJANGO_DEBUG=1
+        ports:
+          - 8900:8900
+    db:
+        image: mysql:5.7
+        expose:
+          - 3306
+        networks: [mysql-net]
+        volumes: ["db-volume:/var/lib/mysql"]
+        command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=+8:00"]
+        environment:
+        - MYSQL_ROOT_PASSWORD=gtndyq
+        - MYSQL_DATABASE=xianggui_service
+        - MYSQL_USER=root
+    redis:
+        image: redis:5.0
+        networks: [redis-net]
+
+volumes:
+    db-volume:
+    var-volume:
+    share-volume:
+
+networks:
+    redis-net:
+    mysql-net:
+    admin-net:

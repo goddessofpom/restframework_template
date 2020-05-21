@@ -1,0 +1,13 @@
+django==2.1.7
+uwsgi
+PyMySQL
+jinja2
+django-filter==2.2.0
+djangorestframework==3.10.3
+djangorestframework-jwt==1.11.0
+pillow==5.4
+wechatpy==1.8.13
+django-redis==4.5
+redis==3.2.0
+jpush==3.3.8
+qcloudsms_py==0.1.4 
