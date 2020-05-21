@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/1.10/ref/settings/
 """
 
 import os
+import datetime
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -198,6 +199,8 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = '/xianggui_service_share/media/' if DJANGO_IN_DOCKER_DEBUG is not None else "media/"
 
 BASE_URL = '' if DJANGO_IN_DOCKER_DEBUG is not None else ""
+
+AUTH_USER_MODEL = 'app.User'
 
 # REST_FRAMEWORK
 REST_FRAMEWORK = {

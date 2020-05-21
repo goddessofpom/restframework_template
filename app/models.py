@@ -17,7 +17,6 @@ class User(Base, auth_models.AbstractUser):
         (GENDER_FEMALE, "女"),
     )
 
-    shop = models.ForeignKey('shop.Shop', models.CASCADE, null=True, db_constraint=False)
     name = models.CharField("姓名", max_length=32, null=True)
     phone = models.CharField("手机号", max_length=12, null=True)
     avatar = models.CharField("头像", max_length=100, null=True)
