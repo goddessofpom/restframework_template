@@ -1,23 +1,39 @@
 import sys
 import re
 from os import path
+import os
 
 
 class CodeGenerator(object):
-    def __init__(self, module_name, name, verbose_name=None):
+    def __init__(self, module_name="", name="", verbose_name=None):
         self.module_name = module_name
         self.name = name.capitalize()
         self.verbose_name = verbose_name
         self.parent_path = path.dirname(path.dirname(__file__))
+        self.exclude_models = [
+            "LogEntry", "Permission", "Group", "ContentType", "Session"
+        ]
 
     def _find_pos(self, target, content):
         tab=re.search(target, content)
         pos=tab.start()
         return pos
+
+    def set_module_name(self, module_name):
+        self.module_name = module_name
+    
+    def set_name(self, name):
+        self.name = name
     
     @property
     def _lower_name(self):
-        return self.name.lower()
+        lst = []
+        for index, char in enumerate(self.name):
+            if char.isupper() and index != 0:
+                lst.append("_")
+            lst.append(char)
+
+        return "".join(lst).lower()
 
     @property
     def url_template(self):
@@ -50,21 +66,45 @@ class CodeGenerator(object):
         }}
         """
 
-    def _write_urls(self):
+    def init_files(self, path):
+        urls = os.path.join(path, "urls.py")
+        viewsets = os.path.join(path, "viewsets.py")
+        serializers = os.path.join(path, "serializers.py")
+        filters = os.path.join(path, "filters.py")
+        if os.path.exists(urls):
+            os.remove(urls)
+        if os.path.exists(viewsets):
+            os.remove(viewsets)
+        if os.path.exists(serializers):
+            os.remove(serializers)
+        if os.path.exists(filters):
+            os.remove(filters)
+
+        open(urls, 'w').close()
+        open(viewsets, 'w').close()
+        open(serializers, 'w').close()
+        open(filters, 'w').close()
+
+    def _write_urls(self, insert=True):
         url_template = self.url_template
         url_path = path.join(self.parent_path, self.module_name, "urls.py")
-        with open(url_path, 'r+') as f:
-            content = str(f.read())
-            pos = self._find_pos("urlpatterns", content)
-            if pos == -1:
-                raise Exception("urlpatterns not defined")
+        if insert:
+            with open(url_path, 'r+') as f:
+                content = str(f.read())
+                pos = self._find_pos("urlpatterns", content)
+                if pos == -1:
+                    raise Exception("urlpatterns not defined")
             
-            f.seek(0)
-            f.truncate()
+                f.seek(0)
+                f.truncate()
 
-        with open(url_path, 'a') as f:
-            content = '\n' + content[:pos] + url_template + '\n' + content[pos:]
-            f.write(content)
+            with open(url_path, 'a') as f:
+                content = '\n' + content[:pos] + url_template + '\n' + content[pos:]
+                f.write(content)
+        else:
+            with open(url_path, 'a') as f:
+                content = '\n\n' + url_template
+                f.write(content)
 
     def _write_viewset(self):
         viewset_template = self.viewset_template
@@ -90,11 +130,78 @@ class CodeGenerator(object):
             content = '\n\n' + filter_template
             f.write(content)
 
+    def write_file_header(self, configs):
+        for config in configs:
+            filter_header = "from django_filters.rest_framework import FilterSet"
+            serializer_header = "from rest_framework.serializers import ModelSerializer"
+            viewset_header = "from restframework_core.viewsets import CustomModelViewSet"
+            url_header = "from django.conf.urls import url, re_path, include\n\nfrom rest_framework.routers import DefaultRouter"
+
+            filter_path = path.join(self.parent_path, config.name, "filters.py")
+            serializer_path = path.join(self.parent_path, config.name, "serializers.py")
+            viewset_path = path.join(self.parent_path, config.name, "viewsets.py")
+            url_path = path.join(self.parent_path, config.name, "urls.py")
+
+            models = config.get_models()
+
+            mark = 0
+            import_serializer_string = ""
+            import_filter_string = ""
+            import_model_string = ""
+            for m in models:
+                if m.__name__ in self.exclude_models:
+                    continue
+                try:
+                    if mark == 0:
+                        filter_header = filter_header + f"\n\nfrom .models import {m.__name__}"
+                        serializer_header = serializer_header + f"\n\nfrom .models import {m.__name__}"
+                        import_serializer_string = import_serializer_string + f"\n\nfrom .serializers import {m.__name__}Serializer"
+                        import_filter_string = import_filter_string + f"\n\nfrom .filters import {m.__name__}Filter"
+                        import_model_string = import_model_string + f"\n\nfrom .models import {m.__name__}"
+                        url_header = url_header + f"\n\nfrom .viewsets import {m.__name__}ViewSet"
+                        mark = 1
+                    else:
+                        filter_header = filter_header + f", {m.__name__}"
+                        serializer_header = serializer_header + f", {m.__name__}"
+                        import_serializer_string = import_serializer_string + f", {m.__name__}Serializer"
+                        import_filter_string = import_filter_string + f", {m.__name__}Filter"
+                        import_model_string = import_model_string + f", {m.__name__}"
+                        url_header = url_header + f", {m.__name__}ViewSet"
+                except:
+                    raise Exception("error happen!")
+            
+            viewset_header = viewset_header + import_model_string + import_serializer_string + import_filter_string
+            with open(viewset_path, 'a') as f:
+                f.write(viewset_header)
+            
+            with open(serializer_path, 'a') as f:
+                f.write(serializer_header)
+            
+            with open(filter_path, 'a') as f:
+                f.write(filter_header)
+
+            url_header = url_header + "\n\n\n\nrouter = DefaultRouter()\n\nrouter.trailing_slash = '[/]?'\n\nurlpatterns = [\n\n    url('', include(router.urls)),\n\n]\n\n"
+            with open(url_path, 'a') as f:
+                f.write(url_header)
+
+
     def gen_code(self):
         self._write_urls()
         self._write_viewset()
         self._write_serializer()
         self._write_filter()
+
+    def batch_gen_code(self, configs):
+        for config in configs:
+            models = config.get_models()
+            for m in models:
+                if m.__name__ in self.exclude_models:
+                    continue
+                else:
+                    self.set_module_name(config.name)
+                    self.set_name(m.__name__)
+                    self.gen_code()
+
 
 if __name__ == "__main__":
     module_name = sys.argv[1]

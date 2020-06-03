@@ -42,6 +42,6 @@ def upload_image(request):
             return json_failed(400, "请选择上传图片")
 
         image_path, name = save_image(file)
-        url = os.path.join(settings.BASE_URL, "media", images_path, name)
+        url = os.path.join(settings.BASE_URL, "media", image_path, name)
         return json_success({"url": url})
     return HttpResponseNotAllowed("POST")
