@@ -6,7 +6,7 @@ import traceback
 from functools import wraps
 from django.http import HttpResponse
 from app.models import User
-import core
+
 
 def generate_user_token(user):
     jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
@@ -18,12 +18,7 @@ def generate_user_token(user):
 
 class CustomPermission(BasePermission):
     def has_permission(self, request, view):
-        shop_id = core.shop.get_shop_id(request)
-        if shop_id:
-            request_codename = f"{view.basename}_{view.action}"
-            tool = core.permission.ShopPermissionTool(shop_id)
-            return tool.check_permission(request_codename)
-            
+
         if request.method == "GET":
             return True
         
