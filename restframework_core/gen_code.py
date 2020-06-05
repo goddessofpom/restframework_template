@@ -2,13 +2,14 @@ import sys
 import re
 from os import path
 import os
+from django.db import models
 
 
 class CodeGenerator(object):
-    def __init__(self, module_name="", name="", verbose_name=None):
+    def __init__(self, module_name="", name="", model=None):
         self.module_name = module_name
         self.name = name.capitalize()
-        self.verbose_name = verbose_name
+        self.model = model
         self.parent_path = path.dirname(path.dirname(__file__))
         self.exclude_models = [
             "LogEntry", "Permission", "Group", "ContentType", "Session"
@@ -24,6 +25,9 @@ class CodeGenerator(object):
     
     def set_name(self, name):
         self.name = name
+
+    def set_model(self, model):
+        self.model = model
     
     @property
     def _lower_name(self):
@@ -106,12 +110,78 @@ class CodeGenerator(object):
                 content = '\n\n' + url_template
                 f.write(content)
 
+    def _get_field_type_string(self, field):
+        if isinstance(field, models.SmallIntegerField) or\
+            isinstance(field, models.PositiveIntegerField) or\
+            isinstance(field, models.IntegerField) or\
+            isinstance(field, models.ForeignKey) or\
+            isinstance(field, models.AutoField) or\
+            isinstance(field, models.PositiveSmallIntegerField):
+            return f"{{Number}}"
+        elif isinstance(field, models.CharField) or\
+            isinstance(field, models.TextField) or\
+            isinstance(field, models.DateField) or\
+            isinstance(field, models.DateTimeField):
+            return f"{{String}}"
+        elif isinstance(field, models.BooleanField):
+            return f"{{Boolean}}"
+        else:
+            return f"{{Object}}"
+
+    def _get_choice_desc(self, field):
+        if len(field.choices) > 0:
+            desc = ""
+            for choice in field.choices:
+                num = choice[0]
+                num_text = choice[1]
+                desc = desc + f"{num}{num_text} "
+            return desc
+        return ""
+
+    def _get_doc_template(self):
+        m = self.model
+        lower = self._lower_name
+        list_template = f"""\n\n\"\"\"
+    @api {{get}} /{self.module_name}/{lower} {m._meta.verbose_name}列表
+    @apiVersion 1.0.0
+    @apiGroup {self.module_name}
+    @apiName {m._meta.verbose_name}列表({m.__name__}List)\n
+        """
+
+        create_template = f"""\n\n\"\"\"
+    @api {{post}} /{self.module_name}/{lower} 创建{m._meta.verbose_name}
+    @apiVersion 1.0.0
+    @apiGroup {self.module_name}
+    @apiName 创建{m._meta.verbose_name}(create{m.__name__})\n
+        """
+
+        for field in m._meta.fields:
+            field_type_string = self._get_field_type_string(field)
+            api_name = field.name
+            field_desc = field.verbose_name
+            optional_name = f"[{field.name}]" if field.null else field.name
+            choices_text = self._get_choice_desc(field)
+            result_line = f"@apiSuccess {field_type_string} {api_name} {field_desc} {choices_text}\n"
+            list_template = list_template + result_line
+            param_line = f"@apiParam {field_type_string} {optional_name} {field_desc} {choices_text}\n"
+            create_template = create_template + param_line
+        
+        list_template = list_template + "\n\"\"\""
+        create_template = create_template + "\n\"\"\""
+
+        hold_template = list_template + "\n\n" + create_template
+        return hold_template
+
     def _write_viewset(self):
         viewset_template = self.viewset_template
         viewset_path = path.join(self.parent_path, self.module_name, "viewsets.py")
 
         with open(viewset_path, 'a') as f:
-            content = '\n\n' + viewset_template
+            if self.model:
+                doc = self._get_doc_template()
+                content = '\n\n' + viewset_template + '\n\n' + doc
+            else:
+                content = '\n\n' + viewset_template
             f.write(content)
 
     def _write_serializer(self):
@@ -200,13 +270,13 @@ class CodeGenerator(object):
                 else:
                     self.set_module_name(config.name)
                     self.set_name(m.__name__)
+                    self.set_model(m)
                     self.gen_code()
 
 
 if __name__ == "__main__":
     module_name = sys.argv[1]
     name = sys.argv[2]
-    verbose_name = sys.argv[3]
 
-    gen = CodeGenerator(module_name, name, verbose_name)
+    gen = CodeGenerator(module_name, name)
     gen.gen_code()

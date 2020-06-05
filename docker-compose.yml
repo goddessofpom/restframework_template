@@ -24,7 +24,7 @@ services:
         volumes: ["db-volume:/var/lib/mysql"]
         command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=+8:00"]
         environment:
-        - MYSQL_ROOT_PASSWORD=gtndyq
+        - MYSQL_ROOT_PASSWORD=
         - MYSQL_DATABASE=xianggui_service
         - MYSQL_USER=root
     redis:

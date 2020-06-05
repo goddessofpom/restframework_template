@@ -130,7 +130,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'xianggui_service',
         'USER': 'root',
-        'PASSWORD': 'qwer1234' if DJANGO_IN_DOCKER_DEBUG is None else 'gtndyq',
+        'PASSWORD': 'qwer1234' if DJANGO_IN_DOCKER_DEBUG is None else '',
         'HOST': '127.0.0.1' if DJANGO_IN_DOCKER_DEBUG is None else 'db',
         'PORT': '',
         'OPTIONS': {'charset': 'utf8mb4'}
