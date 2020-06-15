@@ -1,6 +1,8 @@
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
+import os
+from core.utils import save_image
 # from pywe_django.settings import w
 
 # 客户系统、商户系统、订单系统、优惠券、余额、购物车、物流模板、会员卡（积分）
