@@ -3,6 +3,8 @@ import re
 from os import path
 import os
 from django.db import models
+import zipfile
+import json
 
 
 class CodeGenerator(object):
@@ -272,6 +274,96 @@ class CodeGenerator(object):
                     self.set_name(m.__name__)
                     self.set_model(m)
                     self.gen_code()
+
+
+
+class JsonGenerator(object):
+    def __init__(self):
+        self.base_path = os.getcwd()
+        self.file_list = []
+        self.exclude_models = [
+            "LogEntry", "Permission", "Group", "ContentType", "Session"
+        ]
+
+    def _get_type_data(self, field):
+        if isinstance(field, models.SmallIntegerField) or\
+            isinstance(field, models.PositiveIntegerField) or\
+            isinstance(field, models.IntegerField) or\
+            isinstance(field, models.ForeignKey) or\
+            isinstance(field, models.AutoField) or\
+            isinstance(field, models.PositiveSmallIntegerField):
+            return "number"
+        elif isinstance(field, models.CharField) or\
+            isinstance(field, models.TextField):
+            return "string"
+        elif isinstance(field, models.BooleanField):
+            return "boolean"
+        elif isinstance(field, models.DateField) or\
+            isinstance(field, models.DateTimeField):
+            return "date"
+        else:
+            return "string"
+
+    def _get_choices_data(self, field):
+        if len(field.choices) > 0:
+            enum = []
+            for choice in field.choices:
+                data = {"label": choice[1], "value": choice[0]}
+                enum.append(data)
+            return enum
+        return None
+
+    def gen_model_json(self, model):
+        file_name = f"{model.__name__}.json"
+        full_path = os.path.join(self.base_path, file_name)
+
+        properties = {}
+        for field in model._meta.fields:
+            if field.name == "id" or field.name == "deleted" or field.name == "updated":
+                continue
+            field_data = {
+                "title": str(field.verbose_name),
+                "required": "false" if field.null else "true",
+            }
+
+            choice_data = self._get_choices_data(field)
+            if choice_data:
+                field_data["enum"] = choice_data
+
+            field_type = self._get_type_data(field)
+            field_data["type"] = field_type
+
+            field_name = field.name
+
+            properties[field_name] = field_data
+        
+        data = {"type": "object", "properties": properties}
+
+        with open(full_path, "w") as f:
+            json.dump(data, f, ensure_ascii=False)
+
+        self.file_list.append(full_path)
+
+    def batch_gen_json(self, configs):
+        for config in configs:
+            models = config.get_models()
+            for m in models:
+                if m.__name__ in self.exclude_models:
+                    continue
+                else:
+                    self.gen_model_json(m)
+
+        self._get_zip()
+
+    def _get_zip(self, zip_name="json_data.zip"):
+        zp=zipfile.ZipFile(zip_name,'w')
+        for f in self.file_list:
+            zp.write(f)
+        zp.close()
+
+        for f in self.file_list:
+            os.remove(f)
+
 
 
 if __name__ == "__main__":
