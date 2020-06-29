@@ -305,6 +305,9 @@ class JsonGenerator(object):
             return "string"
 
     def _get_choices_data(self, field):
+        if isinstance(field, models.ForeignKey):
+            return []
+
         if len(field.choices) > 0:
             enum = []
             for choice in field.choices:
@@ -313,13 +316,16 @@ class JsonGenerator(object):
             return enum
         return None
 
+    def _is_exclude_field(self, field):
+        return field.name == "id" or field.name == "deleted" or field.name == "updated" or field.name == "created"
+
     def gen_model_json(self, model):
         file_name = f"{model.__name__}.json"
         full_path = os.path.join(self.base_path, file_name)
 
         properties = {}
         for field in model._meta.fields:
-            if field.name == "id" or field.name == "deleted" or field.name == "updated":
+            if self._is_exclude_field(field):
                 continue
             field_data = {
                 "title": str(field.verbose_name),
@@ -327,7 +333,7 @@ class JsonGenerator(object):
             }
 
             choice_data = self._get_choices_data(field)
-            if choice_data:
+            if choice_data is not None:
                 field_data["enum"] = choice_data
 
             field_type = self._get_type_data(field)
