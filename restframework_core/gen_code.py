@@ -329,7 +329,7 @@ class JsonGenerator(object):
                 continue
             field_data = {
                 "title": str(field.verbose_name),
-                "required": "false" if field.null else "true",
+                "required": False if field.null else True,
             }
 
             choice_data = self._get_choices_data(field)
