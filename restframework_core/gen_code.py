@@ -56,7 +56,7 @@ class CodeGenerator(object):
 
     @property
     def serializer_template(self):
-        return f"""class {self.name}Serializer(serializers.ModelSerializer):
+        return f"""class {self.name}Serializer(ModelSerializer):
     class Meta:
         model = {self.name}
         exclude = ('updated', 'deleted')
@@ -143,7 +143,7 @@ class CodeGenerator(object):
     def _get_doc_template(self):
         m = self.model
         lower = self._lower_name
-        list_template = f"""\n\n\"\"\"
+        list_template = f"""    \"\"\"
     @api {{get}} /{self.module_name}/{lower} {m._meta.verbose_name}列表
     @apiVersion 1.0.0
     @apiGroup {self.module_name}
@@ -158,18 +158,20 @@ class CodeGenerator(object):
         """
 
         for field in m._meta.fields:
+            if field.name == "created" or field.name == "updated" or field.name == "deleted":
+                continue
             field_type_string = self._get_field_type_string(field)
             api_name = field.name
             field_desc = field.verbose_name
             optional_name = f"[{field.name}]" if field.null else field.name
             choices_text = self._get_choice_desc(field)
-            result_line = f"@apiSuccess {field_type_string} {api_name} {field_desc} {choices_text}\n"
+            result_line = f"    @apiSuccess {field_type_string} {api_name} {field_desc} {choices_text}\n"
             list_template = list_template + result_line
-            param_line = f"@apiParam {field_type_string} {optional_name} {field_desc} {choices_text}\n"
+            param_line = f"    @apiParam {field_type_string} {optional_name} {field_desc} {choices_text}\n"
             create_template = create_template + param_line
         
-        list_template = list_template + "\n\"\"\""
-        create_template = create_template + "\n\"\"\""
+        list_template = list_template + "\n    \"\"\""
+        create_template = create_template + "\n    \"\"\""
 
         hold_template = list_template + "\n\n" + create_template
         return hold_template
